@@ -30,6 +30,7 @@ typedef enum
 {
 	AST_NUMBER,
 	AST_ADD,
+	AST_MIN,
 	AST_MUL
 } ast_type; 
 
@@ -87,6 +88,13 @@ void next_token(lexer *lex)
 	if (*lex->cursor == '+')
 	{
 		lex->current.type = TK_PLUS;
+		lex->cursor++;
+		return;
+	}
+
+	if (*lex->cursor == '-')
+	{
+		lex->current.type = TK_MINUS;
 		lex->cursor++;
 		return;
 	}
@@ -174,10 +182,18 @@ ast_node *parse_term(lexer *lex)
 ast_node *parse_expr(lexer *lex)
 {
 	ast_node *node = parse_term(lex);
-	while (lex->current.type == TK_PLUS)
+	while (lex->current.type == TK_PLUS || lex->current.type == TK_MINUS)
 	{
-		next_token(lex);
-		node = new_op_node(AST_ADD, node, parse_term(lex));
+		if (lex->current.type == TK_PLUS)
+		{
+			next_token(lex);
+			node = new_op_node(AST_ADD, node, parse_term(lex));
+		}
+		else
+		{
+			next_token(lex);
+			node = new_op_node(AST_MIN, node, parse_term(lex));
+		}
 	}
 	return node;
 }
@@ -196,6 +212,13 @@ void print_ast(ast_node *node, int indent)
 	else if (node->type == AST_ADD)
 	{
 		printf("+\n");
+		print_ast(node->left, indent + 1);
+		print_ast(node->right, indent + 1);
+	}
+
+	else if (node->type == AST_MIN)
+	{
+		printf("-\n");
 		print_ast(node->left, indent + 1);
 		print_ast(node->right, indent + 1);
 	}
@@ -223,14 +246,15 @@ void print_ast_pretty(ast_node *node, int indent) {
 	// Print current node
 	for (int i = 0; i < indent; i++) printf(" ");
 
-	if (node->type == AST_NUMBER) {
+	if (node->type == AST_NUMBER)
 		printf(COLOR_NUM "%d" COLOR_RESET "\n", node->value);
-	} else if (node->type == AST_ADD) {
+	else if (node->type == AST_ADD)
 		printf(COLOR_ADD "+" COLOR_RESET "\n");
-	} else if (node->type == AST_MUL) {
+	else if (node->type == AST_MIN)
+		printf(COLOR_ADD "-" COLOR_RESET "\n");
+	else if (node->type == AST_MUL)
 		printf(COLOR_MUL "*" COLOR_RESET "\n");
-	}
-
+	
 	// Print left child (below)
 	print_ast_pretty(node->left, indent + 4);
 }
